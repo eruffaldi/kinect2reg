@@ -1,0 +1,29 @@
+digraph G {
+
+	node [shape=ellipse];
+	ir [color=gray];
+	colorjpeg [color=green];
+	depth [color=blue];
+	color [color=green,label="color\n1920x1080"];
+	registeredcolor [color=green];
+	registeredepth [label="registeredepth\ncolor camera\n1920x1080",color=blue];
+	undistoreddepth [color=blue];
+	pointcloudcolor [color=red];
+	node [shape=box];
+	jpegdecode;
+	grabber;
+	depthdecoder [label="depthdecoder\n(CPU/OpenCL/OpenGL)\nCUDA coming"];
+	registration [label="registration\n(CPU/OpenCL)\nCUDA coming"];
+	make3d [label="make pointcloud\n(CPU)\nOpenCL/CUDA trivial"];
+	grabber -> colorjpeg;
+	grabber -> ir;
+	colorjpeg -> jpegdecode;
+	jpegdecode -> color;
+	ir -> depthdecoder -> depth;
+	depth -> registration;
+	color -> registration->	registeredcolor ;
+	registration -> registeredepth;
+	registration -> undistoreddepth;
+	undistoreddepth -> make3d;
+	registeredcolor -> make3d -> pointcloudcolor;
+}
