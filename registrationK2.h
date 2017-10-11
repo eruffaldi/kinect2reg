@@ -25,7 +25,8 @@
  */
 #pragma once
 #include <string>
-
+#include <stdint.h>
+#include <vector>
 struct rgb_t
 {
   uint8_t r,g,b;
@@ -38,7 +39,89 @@ namespace libfreenect2
 struct Frame
 {
   int width,height,bytes_per_pixel;
-  void * data;
+  void * data; // for the algorithm
+  void * pixeldata; // pixel origin
+};
+
+
+inline Frame prepareFrameRGB(int width, int height, unsigned char * p)
+{
+  Frame r;
+  r.width = width;
+  r.height = height;
+  r.bytes_per_pixel = 3;
+  r.data = p;
+  r.pixeldata = p;
+  return r;
+}
+
+inline Frame prepareFrameRGBA(int width, int height, unsigned char * p)
+{
+  Frame r;
+  r.width = width;
+  r.height = height;
+  r.bytes_per_pixel = 4;
+  r.data = p;
+  r.pixeldata = p;
+  return r;
+}
+
+inline Frame prepareFrame(int width, int height, float * p)
+{
+  Frame r;
+  r.width = width;
+  r.height = height;
+  r.bytes_per_pixel = 4;
+  r.data = p;
+  r.pixeldata = p;
+  return r;
+}
+
+
+inline Frame prepareFrame(int width, int height, unsigned short * p)
+{
+  Frame r;
+  r.width = width;
+  r.height = height;
+  r.bytes_per_pixel = 2;
+  r.data = p;
+  r.pixeldata = p;
+  return r;
+}
+
+
+// Allocates a buffer for the size of the color 
+struct AllocFrameColor: public Frame
+{
+    AllocFrameColor(bool hdresolution = false, bool rgb = false, int bordertopbottom = 2)
+    {
+      width = hdresolution ? 1920: 512;
+      height = (hdresolution? 1080:424)+bordertopbottom;
+      bytes_per_pixel = rgb ? 3 : 4;
+      xdata.resize(width*height*bytes_per_pixel);
+      data = xdata.data();
+      pixeldata = xdata.data() + bordertopbottom/2*width*bytes_per_pixel;
+    }
+
+    std::vector<uint8_t> xdata;
+};
+
+/// allocates a frame depth : e.g. undistored
+struct AllocFrameDepth : public Frame
+{
+    // hddepth = true if FullHD othewise Depth resolution
+    // intabordertopbottom = 2
+    AllocFrameDepth(bool hdresolution = true, int bordertopbottom = 2)
+    {
+      width = hdresolution ? 1920 : 512;
+      height = (hdresolution?1080:424)+bordertopbottom;
+      bytes_per_pixel = 4; // sizeof(float)
+      xdata.resize(width*height);
+      data = xdata.data();
+      pixeldata = xdata.data() + bordertopbottom/2*width;
+    }
+  
+    std::vector<float> xdata;
 };
 
 
@@ -100,12 +183,40 @@ public:
 
   using rgbt = rgb_t;
 
-  // undistort/register a whole image
+  /*
+   * Case in which we have external RGBA color image mycolor and external Depth as floating point mydepth
+  
+   Frame rgb = prepareFrameRGBA(mycolor);
+   Frame depth = prepareFrame(mydepth);
+   AllocFrameDepth undistorted(false,0); // depth resolution, no border
+   AllocFrameColor registered(false,true,0); // depth resolution, color RGB, no border
+   apply4(&rgb,&depth,&undistorted,&registered);
+   // Usable Output: Color=registered Depth=undistorted
+
+
+   If you want instead FullHD output (depth registered over color)
+
+   Frame rgb = prepareFrameRGBA(mycolor);
+   Frame depth = prepareFrame(mydepth);
+   AllocFrameDepth undistorted(false,0); // depth resolution, no border
+   AllocFrameColor registered(false,true,0); // depth resolution, color RGB, no border
+   AllocFrameDepth bigdepth(true,2);  
+   apply4(&rgb,&depth,&undistorted,&registered,true,&bigdepth);
+
+   // Usable Output: Color=rgb Depth=bigdepth (with offset use origin())
+   */
+
+  // undistort/register a whole image RGBA 
   bool apply4(const Frame* rgb, const Frame* depth, Frame* undistorted, Frame* registered, const bool enable_filter = true, Frame* bigdepth = 0) const;
 
+  // undistort/register a whole image RGB
   bool apply3(const Frame* rgb, const Frame* depth, Frame* undistorted, Frame* registered, const bool enable_filter = true, Frame* bigdepth = 0) const;
 
+  // undistort/register a whole image Gray
   bool apply1(const Frame* rgb, const Frame* depth, Frame* undistorted, Frame* registered, const bool enable_filter = true, Frame* bigdepth = 0) const;
+
+  // undistort/register a whole image and automatically dispatch RGBA/RGB/Gray1
+  bool apply(const Frame* rgb, const Frame* depth, Frame* undistorted, Frame* registered, const bool enable_filter = true, Frame* bigdepth = 0) const;
 
 public:
   void distort(int mx, int my, float& dx, float& dy) const;

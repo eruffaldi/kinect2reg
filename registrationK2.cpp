@@ -123,7 +123,10 @@ bool Registration::apply3(const Frame *rgb, const Frame *depth, Frame *undistort
       depth->width != 512 || depth->height != 424 || depth->bytes_per_pixel != 4 ||
       undistorted->width != 512 || undistorted->height != 424 || undistorted->bytes_per_pixel != 4 ||
       registered->width != 512 || registered->height != 424 || registered->bytes_per_pixel != 3)
+  {
+    std::cerr << "bad size/type of frames. Color(1920,1080,RGB=3 bytespp) Depth(512,424,float32=4 bytespp) Undistorted==Depth Registered(512,424,RGB=3 bytespp)\n";
     return false;
+  }
 
   const float *depth_data = (float*)depth->data;
   const rgbt *rgb_data = (rgbt*)rgb->data;
@@ -152,6 +155,7 @@ bool Registration::apply3(const Frame *rgb, const Frame *depth, Frame *undistort
 
         if(bigdepth->bytes_per_pixel != 4 || bigdepth->width*bigdepth->height != size_filter_map)
         {
+          std::cerr << "Expected BIGDEPTH to be total of " << size_filter_map << " pixels and type float32 " << std::endl;
           return false;
         }
     }
@@ -279,18 +283,37 @@ bool Registration::apply3(const Frame *rgb, const Frame *depth, Frame *undistort
   return true;
 }
 
+bool Registration::apply(const Frame* rgb, const Frame* depth, Frame* undistorted, Frame* registered, const bool enable_filter , Frame* bigdepth ) const
+{
+  if(rgb->bytes_per_pixel == 3)
+    return apply3(rgb,depth,undistorted,registered,enable_filter,bigdepth);
+  else if(rgb->bytes_per_pixel==4)
+    return apply3(rgb,depth,undistorted,registered,enable_filter,bigdepth);
+  else if(rgb->bytes_per_pixel==1)
+    return apply1(rgb,depth,undistorted,registered,enable_filter,bigdepth);
+  else
+  {
+    std::cerr << "unsupported RGB color type\n";
+    return false;
+  }
+
+}
+
+
 
 bool Registration::apply4(const Frame *rgb, const Frame *depth, Frame *undistorted, Frame *registered, const bool enable_filter, Frame *bigdepth) const
 {
-  /*
   // Check if all frames are valid and have the correct size
   if (!rgb || !depth || !undistorted || !registered ||
       rgb->width != 1920 || rgb->height != 1080 || rgb->bytes_per_pixel != 4 ||
       depth->width != 512 || depth->height != 424 || depth->bytes_per_pixel != 4 ||
       undistorted->width != 512 || undistorted->height != 424 || undistorted->bytes_per_pixel != 4 ||
       registered->width != 512 || registered->height != 424 || registered->bytes_per_pixel != 4)
+  {
+    std::cerr << "bad size/type of frames. Color(1920,1080,RGBA=4 bytespp) Depth(512,424,float32=4 bytespp) Undistorted==Depth Registered(512,424,RGBA=4 bytespp)\n";
     return false;
-*/
+  }
+
   const float *depth_data = (float*)depth->data;
   const unsigned int *rgb_data = (unsigned int*)rgb->data;
   float *undistorted_data = (float*)undistorted->data;
@@ -318,6 +341,7 @@ bool Registration::apply4(const Frame *rgb, const Frame *depth, Frame *undistort
 
         if(bigdepth->bytes_per_pixel != 4 || bigdepth->width*bigdepth->height != size_filter_map)
         {
+          std::cerr << "Expected BIGDEPTH to be total of " << size_filter_map << " pixels and type float32 " << std::endl;
           return false;
         }
     }
@@ -449,14 +473,15 @@ bool Registration::apply4(const Frame *rgb, const Frame *depth, Frame *undistort
 bool Registration::apply1(const Frame *rgb, const Frame *depth, Frame *undistorted, Frame *registered, const bool enable_filter, Frame *bigdepth) const
 {
   // Check if all frames are valid and have the correct size
-  /*
   if (!rgb || !depth || !undistorted || !registered ||
       rgb->width != 1920 || rgb->height != 1080 || rgb->bytes_per_pixel != 1 ||
       depth->width != 512 || depth->height != 424 || depth->bytes_per_pixel != 4 ||
-      undistorted->width != 512 || undistorted->height != 424 || undistorted->bytes_per_pixel != 4 ||
+      undistorted->width != 512 || undistorted->height != 424 || undistorted->bytes_per_pixel != 1 ||
       registered->width != 512 || registered->height != 424 || registered->bytes_per_pixel != 1)
+  {
+    std::cerr << "bad size/type of frames. Color(1920,1080,Gray=1 bytespp) Depth(512,424,float32=4 bytespp) Undistorted==Depth Registered=(512,424,gray=1 bytepp)\n";
     return false;
-  */
+  }
 
   const float *depth_data = (float*)depth->data;
   const  uint8_t *rgb_data = (uint8_t*)rgb->data;
@@ -485,6 +510,7 @@ bool Registration::apply1(const Frame *rgb, const Frame *depth, Frame *undistort
 
         if(bigdepth->bytes_per_pixel != 4 || bigdepth->width*bigdepth->height != size_filter_map)
         {
+          std::cerr << "Expected BIGDEPTH to be total of " << size_filter_map << " pixels and type float32 " << std::endl;
           return false;
         }
     }
